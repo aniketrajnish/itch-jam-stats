@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>jam-stats</title>
+  <title>Itch.io Jam Stats</title>
   <link rel="icon" type="image/png" href="./logo.png">
   <meta
     name="description"
@@ -45,8 +45,31 @@
     }
 
     a {
-      color: inherit;
       text-decoration: none;
+    }
+
+    a[href] {
+      color: var(--accent-dark);
+      text-decoration-color: transparent;
+      text-decoration-thickness: 0.08em;
+      text-underline-offset: 0.14em;
+      transition: color 120ms ease, text-decoration-color 120ms ease;
+    }
+
+    a[href]:hover,
+    a[href]:focus-visible {
+      color: var(--accent);
+      text-decoration: underline;
+      text-decoration-color: currentColor;
+    }
+
+    .topbar a[href] {
+      color: #ffffff;
+    }
+
+    .topbar a[href]:hover,
+    .topbar a[href]:focus-visible {
+      color: var(--accent-soft);
     }
 
     button,
@@ -271,12 +294,6 @@
       font-weight: 700;
     }
 
-    .game-link:hover,
-    .subtle a:hover,
-    .contrib-list a:hover {
-      text-decoration: underline;
-    }
-
     .subtle {
       display: block;
       margin-top: 4px;
@@ -349,7 +366,7 @@
       <div class="brand">
         <img class="page-logo" src="./logo.png" alt="jam-stats logo">
         <div class="brand-copy">
-          <h1>jam-stats</h1>
+          <h1><a href="https://itch.io" target="_blank" rel="noreferrer">Itch.io</a> Jam Stats</h1>
         </div>
       </div>
     </header>
