@@ -3,49 +3,44 @@
     {
       key: "gameName",
       label: "game name",
-      title: "canonical itch.io game title from jam_games[].game.title",
       kind: "text",
       defaultSortDir: "asc",
     },
     {
       key: "contributors",
       label: "contributors",
-      title: "uses jam_games[].contributors when present otherwise falls back to the primary uploader",
       kind: "text",
       defaultSortDir: "asc",
     },
     {
       key: "popularity",
       label: "popularity",
-      title: "uses itch.io native jam_games order from entries.json where 1 is most popular",
       kind: "rank",
       defaultSortDir: "desc",
     },
     {
       key: "totalRating",
       label: "total rating",
-      title: "raw rating_count from entries.json",
       kind: "number",
       defaultSortDir: "desc",
     },
     {
       key: "coolness",
       label: "coolness",
-      title: "raw coolness from entries.json calculated by itch as max votes_given minus disqualified_votes across contributors",
+      title: "max(votes_given - disqualified_votes) across all contributors",
       kind: "number",
       defaultSortDir: "desc",
     },
     {
       key: "karma",
       label: "karma",
-      title: "calculated as log 1 plus coolness minus log 1 plus rating_count divided by log 5",
+      title: "log(1 + coolness) - (log(1 + votes_received) / log(5))",
       kind: "number",
       defaultSortDir: "desc",
     },
     {
       key: "platforms",
       label: "platforms",
-      title: "from jam_games[].game.platforms in entries.json",
       kind: "text",
       defaultSortDir: "asc",
     },
@@ -424,9 +419,11 @@
         ${getColumns()
           .map((column) => {
             const isActive = column.key === state.sortKey;
+            const title = typeof column.title === "string" ? column.title.trim() : "";
+            const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
             return `
               <th>
-                <button class="sort${isActive ? " active" : ""}" data-sort="${escapeHtml(column.key)}" type="button" title="${escapeHtml(column.title)}">
+                <button class="sort${isActive ? " active" : ""}" data-sort="${escapeHtml(column.key)}" type="button"${titleAttr}>
                   ${escapeHtml(column.label)}
                   <span class="sort-indicator" aria-hidden="true">${getSortIcon(isActive ? state.sortDir : "idle")}</span>
                 </button>
@@ -492,7 +489,7 @@
     }
 
     setBusy(true);
-    setStatus("resolving jam id and fetching entries", "");
+    setStatus("fetching entries...", "");
 
     try {
       const response = await fetch(getEntriesApiUrl(input));
