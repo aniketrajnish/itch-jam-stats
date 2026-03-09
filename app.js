@@ -50,7 +50,7 @@
     if (message === "Failed to fetch") {
       return apiBase
         ? `unable to reach api at ${apiBase}`
-        : "unable to reach api set jam-stats-api-base to your deployed api origin";
+        : "unable to reach api deploy the cloudflare worker route or set jam-stats-api-base to your api origin";
     }
 
     return message;
@@ -66,7 +66,7 @@
 
     if (!contentType.includes("application/json")) {
       if (!apiBase) {
-        throw new Error("missing api set jam-stats-api-base to your deployed api origin");
+        throw new Error("missing api route deploy the cloudflare worker route or set jam-stats-api-base to your api origin");
       }
 
       throw new Error(`api at ${apiBase} returned ${contentType || "non-json content"}`);
@@ -76,7 +76,7 @@
       return JSON.parse(text);
     } catch (error) {
       if (!apiBase) {
-        throw new Error("api response was not valid json set jam-stats-api-base to your deployed api origin");
+        throw new Error("api response was not valid json");
       }
 
       throw new Error(`api at ${apiBase} returned invalid json`);
