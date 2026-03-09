@@ -115,7 +115,7 @@
       return "-";
     }
 
-    return formatInteger(value);
+    return `#${formatInteger(value)}`;
   }
 
   function formatKarma(value) {
