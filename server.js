@@ -3,7 +3,6 @@ const http = require("http");
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
-const RESULTS_PAGE_SCRAPE_THRESHOLD = 0.8;
 const FETCH_HEADERS = {
   "user-agent": "jam-stats/1.0",
   accept: "text/html,application/json;q=0.9,*/*;q=0.8",
@@ -146,23 +145,6 @@ async function fetchOptionalJson(url) {
   }
 }
 
-async function fetchOptionalText(url) {
-  try {
-    const response = await fetch(url, {
-      headers: FETCH_HEADERS,
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return response.text();
-  } catch (error) {
-    return null;
-  }
-}
-
 function extractJamIdFromHtml(html) {
   const patterns = [
     /new I\.ViewJam\([^]*?"id":\s*(\d+)/,
@@ -279,235 +261,6 @@ function extractRateId(value) {
 
 function normalizeLookupTitle(value) {
   return String(value || "").trim().toLowerCase();
-}
-
-function escapeRegExp(value) {
-  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function decodeHtmlEntities(value) {
-  return String(value || "")
-    .replace(/&#(\d+);/g, (_, codePoint) => String.fromCharCode(Number(codePoint)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, codePoint) => String.fromCharCode(Number.parseInt(codePoint, 16)))
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&#039;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&nbsp;/g, " ");
-}
-
-function normalizeHtmlText(value) {
-  return decodeHtmlEntities(String(value || "").replace(/<[^>]+>/g, " "))
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function buildPageUrl(baseUrl, pageNumber) {
-  if (pageNumber <= 1) {
-    return baseUrl;
-  }
-
-  const url = new URL(baseUrl);
-  url.searchParams.set("page", String(pageNumber));
-  return url.toString();
-}
-
-async function fetchTextsWithConcurrency(urls, concurrency = 8) {
-  if (!urls.length) {
-    return [];
-  }
-
-  const results = new Array(urls.length).fill(null);
-  let index = 0;
-
-  async function worker() {
-    while (index < urls.length) {
-      const currentIndex = index;
-      index += 1;
-      results[currentIndex] = await fetchOptionalText(urls[currentIndex]);
-    }
-  }
-
-  const workerCount = Math.min(concurrency, urls.length);
-  await Promise.all(Array.from({ length: workerCount }, worker));
-  return results.filter(Boolean);
-}
-
-function extractResultsPageCount(html) {
-  const match = html.match(/Page\s+1\s+of\s+(?:<a[^>]*>)?(\d+)/i);
-  const pageCount = Number(match?.[1]);
-  return Number.isFinite(pageCount) && pageCount > 0 ? pageCount : 1;
-}
-
-function extractResultsPathsFromHtml(html, slug) {
-  if (!slug) {
-    return [];
-  }
-
-  const pattern = new RegExp(`<a[^>]+href="(\\/jam\\/${escapeRegExp(slug)}\\/results(?:\\/[^"?]+)?)"[^>]*class="nav_btn`, "gi");
-  const paths = [];
-  const seen = new Set();
-
-  for (const match of html.matchAll(pattern)) {
-    const path = String(match[1] || "").trim();
-    if (!path || seen.has(path)) {
-      continue;
-    }
-
-    seen.add(path);
-    paths.push(path);
-  }
-
-  return paths;
-}
-
-function extractResultsFromHtml(html) {
-  const results = [];
-  const blockPattern = /<div class="game_rank[^"]*">([\s\S]*?)<\/table>/gi;
-
-  for (const match of html.matchAll(blockPattern)) {
-    const blockHtml = match[1];
-    const ratePathMatch = blockHtml.match(/class="forward_link" href="([^"]*\/rate\/\d+)"/i)
-      || blockHtml.match(/href="([^"]*\/rate\/\d+)"/i);
-    const ratePath = String(ratePathMatch?.[1] || "").trim();
-    const rateId = extractRateId(ratePath);
-
-    if (!rateId) {
-      continue;
-    }
-
-    const criteria = [];
-    const rowPattern = /<tr><td[^>]*>([\s\S]*?)<\/td><td[^>]*>([\s\S]*?)<\/td>/gi;
-    for (const rowMatch of blockHtml.matchAll(rowPattern)) {
-      const name = normalizeHtmlText(rowMatch[1]);
-      const rank = Number(normalizeHtmlText(rowMatch[2]).replace(/^#/, ""));
-      if (!name || !Number.isFinite(rank)) {
-        continue;
-      }
-
-      criteria.push({ name, rank });
-    }
-
-    if (!criteria.length) {
-      continue;
-    }
-
-    results.push({
-      id: rateId,
-      url: ratePath.startsWith("http") ? ratePath : `https://itch.io${ratePath}`,
-      criteria,
-    });
-  }
-
-  return results;
-}
-
-function mergeCriteriaLists(primaryCriteria, secondaryCriteria) {
-  const merged = [];
-  const seen = new Set();
-
-  for (const criterion of [...primaryCriteria, ...secondaryCriteria]) {
-    const name = String(criterion?.name || "").trim();
-    const normalizedName = name.toLowerCase();
-    const rank = Number(criterion?.rank);
-    if (!name || seen.has(normalizedName) || !Number.isFinite(rank)) {
-      continue;
-    }
-
-    seen.add(normalizedName);
-    merged.push({
-      name,
-      rank,
-    });
-  }
-
-  return merged;
-}
-
-function mergeResults(primaryResults, secondaryResults) {
-  const merged = new Map();
-
-  function upsert(result) {
-    const rateId = extractRateId(result?.id || result?.url);
-    const submissionUrl = normalizeSubmissionUrl(result?.url);
-    const key = rateId ? `rate:${rateId}` : submissionUrl ? `url:${submissionUrl}` : "";
-
-    if (!key) {
-      return;
-    }
-
-    if (!merged.has(key)) {
-      merged.set(key, {
-        ...result,
-        criteria: Array.isArray(result?.criteria) ? mergeCriteriaLists(result.criteria, []) : [],
-      });
-      return;
-    }
-
-    const existing = merged.get(key);
-    merged.set(key, {
-      ...existing,
-      ...result,
-      id: existing?.id || result?.id || "",
-      url: existing?.url || result?.url || "",
-      criteria: mergeCriteriaLists(
-        Array.isArray(existing?.criteria) ? existing.criteria : [],
-        Array.isArray(result?.criteria) ? result.criteria : []
-      ),
-    });
-  }
-
-  primaryResults.forEach(upsert);
-  secondaryResults.forEach(upsert);
-  return Array.from(merged.values());
-}
-
-async function fetchResultsPages(baseUrl, firstPageHtml, pageCount) {
-  const otherPageUrls = [];
-  for (let pageNumber = 2; pageNumber <= pageCount; pageNumber += 1) {
-    otherPageUrls.push(buildPageUrl(baseUrl, pageNumber));
-  }
-
-  const otherPages = await fetchTextsWithConcurrency(otherPageUrls);
-  return [firstPageHtml, ...otherPages].flatMap(extractResultsFromHtml);
-}
-
-async function fetchPublicPageResults(slug) {
-  if (!slug) {
-    return [];
-  }
-
-  const overallUrl = `https://itch.io/jam/${encodeURIComponent(slug)}/results`;
-  const overallHtml = await fetchOptionalText(overallUrl);
-  if (!overallHtml) {
-    return [];
-  }
-
-  const overallPageCount = extractResultsPageCount(overallHtml);
-  let results = await fetchResultsPages(overallUrl, overallHtml, overallPageCount);
-
-  if (overallPageCount > 1) {
-    return results;
-  }
-
-  const overallPath = `/jam/${slug}/results`;
-  const extraPaths = extractResultsPathsFromHtml(overallHtml, slug)
-    .filter((path) => path !== overallPath);
-
-  for (const path of extraPaths) {
-    const url = `https://itch.io${path}`;
-    const html = await fetchOptionalText(url);
-    if (!html) {
-      continue;
-    }
-
-    const pageCount = extractResultsPageCount(html);
-    const extraResults = await fetchResultsPages(url, html, pageCount);
-    results = mergeResults(results, extraResults);
-  }
-
-  return results;
 }
 
 function slugifyCriteriaName(value) {
@@ -731,25 +484,8 @@ async function handleEntriesRequest(reqUrl, res) {
 
     const feedUrl = resolved.feedUrl;
     const entriesPayload = await fetchJson(feedUrl);
-    const inferredSlug = parsedInput.slug || inferSlug(
-      null,
-      Array.isArray(entriesPayload?.jam_games) ? entriesPayload.jam_games : []
-    );
     const resultsPayload = await fetchOptionalJson(feedUrl.replace(/entries\.json(?:\?.*)?$/i, "results.json"));
-    const jsonResults = Array.isArray(resultsPayload?.results) ? resultsPayload.results : [];
-    const totalEntries = Array.isArray(entriesPayload?.jam_games) ? entriesPayload.jam_games.length : 0;
-    const shouldScrapePublicResults = Boolean(
-      inferredSlug
-      && (jsonResults.length === 0 || jsonResults.length < totalEntries * RESULTS_PAGE_SCRAPE_THRESHOLD)
-    );
-    const publicPageResults = shouldScrapePublicResults
-      ? await fetchPublicPageResults(inferredSlug)
-      : [];
-    const mergedResultsPayload = {
-      ...(resultsPayload || {}),
-      results: mergeResults(jsonResults, publicPageResults),
-    };
-    const normalized = normalizeEntries(entriesPayload, jamId, parsedInput.slug, feedUrl, mergedResultsPayload);
+    const normalized = normalizeEntries(entriesPayload, jamId, parsedInput.slug, feedUrl, resultsPayload);
 
     sendJson(res, 200, {
       input: parsedInput.original,
