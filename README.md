@@ -1,3 +1,3 @@
 # jam-stats
 
-check [makra.games/jam-stats](https://makra.games/jam-stats/)
+check [makra.games/itch-jam-stats/](https://makra.games/itch-jam-stats/)
