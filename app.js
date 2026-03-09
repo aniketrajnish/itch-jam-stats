@@ -1,5 +1,8 @@
 (function () {
   const MIN_RESULTS_COVERAGE_RATIO = 0.8;
+  const THEME_MEDIA_QUERY = typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : null;
 
   const BASE_COLUMNS = [
     {
@@ -74,6 +77,18 @@
   const apiBase = getApiBase();
   let tableScrollSyncFrame = 0;
   let isSyncingTableScroll = false;
+
+  function getSystemTheme() {
+    return THEME_MEDIA_QUERY && THEME_MEDIA_QUERY.matches ? "dark" : "light";
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+  }
+
+  function syncThemeWithSystem() {
+    applyTheme(getSystemTheme());
+  }
 
   function getApiBase() {
     const metaValue = document
@@ -694,5 +709,14 @@
     window.addEventListener("resize", scheduleTableScrollSync);
   }
 
+  if (THEME_MEDIA_QUERY) {
+    if (typeof THEME_MEDIA_QUERY.addEventListener === "function") {
+      THEME_MEDIA_QUERY.addEventListener("change", syncThemeWithSystem);
+    } else if (typeof THEME_MEDIA_QUERY.addListener === "function") {
+      THEME_MEDIA_QUERY.addListener(syncThemeWithSystem);
+    }
+  }
+
+  applyTheme(getSystemTheme());
   render();
 })();
