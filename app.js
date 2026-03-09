@@ -4,6 +4,13 @@
     ? window.matchMedia("(prefers-color-scheme: dark)")
     : null;
 
+  const INDEX_COLUMN = {
+    key: "rowIndex",
+    label: "#",
+    kind: "index",
+    sortable: false,
+  };
+
   const BASE_COLUMNS = [
     {
       key: "gameName",
@@ -280,6 +287,7 @@
       : [];
 
     return [
+      INDEX_COLUMN,
       BASE_COLUMNS[0],
       BASE_COLUMNS[1],
       BASE_COLUMNS[2],
@@ -366,18 +374,25 @@
     }) * direction;
   }
 
-  function getVisibleRows() {
-    const query = elements.searchInput.value.trim().toLowerCase();
+  function getRankedRows() {
     const filteredRows = state.rows.filter((row) => {
-      const matchesQuery = !query || row.searchableText.includes(query);
       const matchesPlatform = !state.platformFilters.size
         || row.platforms.some((platform) => state.platformFilters.has(getPlatformKey(platform)));
 
-      return matchesQuery && matchesPlatform;
+      return matchesPlatform;
     });
 
     filteredRows.sort(compareRows);
-    return filteredRows;
+    return filteredRows.map((row, index) => ({
+      row,
+      rank: index + 1,
+    }));
+  }
+
+  function getVisibleRows() {
+    const query = elements.searchInput.value.trim().toLowerCase();
+
+    return getRankedRows().filter(({ row }) => !query || row.searchableText.includes(query));
   }
 
   function renderContributors(row) {
@@ -440,7 +455,11 @@
     return '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3"></circle><path d="M8 1.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0 1.5a5 5 0 1 0 0 10A5 5 0 0 0 8 3Z"></path></svg>';
   }
 
-  function renderCell(row, column) {
+  function renderCell(row, column, rank) {
+    if (column.key === "rowIndex") {
+      return `<td class="row-index">${formatInteger(rank)}</td>`;
+    }
+
     if (column.key === "gameName") {
       const projectHref = row.projectUrl ? ` href="${escapeHtml(row.projectUrl)}"` : "";
       const projectTarget = row.projectUrl ? ' target="_blank" rel="noreferrer"' : "";
@@ -486,6 +505,10 @@
       <tr>
         ${getColumns()
           .map((column) => {
+            if (column.sortable === false) {
+              return `<th class="row-index">${escapeHtml(column.label)}</th>`;
+            }
+
             const isActive = column.key === state.sortKey;
             const title = typeof column.title === "string" ? column.title.trim() : "";
             const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
@@ -532,7 +555,7 @@
     }
 
     elements.tableBody.innerHTML = visibleRows
-      .map((row) => `<tr>${columns.map((column) => renderCell(row, column)).join("")}</tr>`)
+      .map(({ row, rank }) => `<tr>${columns.map((column) => renderCell(row, column, rank)).join("")}</tr>`)
       .join("");
 
     scheduleTableScrollSync();

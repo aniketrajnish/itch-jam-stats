@@ -299,6 +299,14 @@
       font-size: 13px;
     }
 
+    th.row-index,
+    td.row-index {
+      width: 1%;
+      white-space: nowrap;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
     thead tr {
       background: var(--header);
     }
@@ -508,6 +516,7 @@
         <table id="results-table" aria-describedby="summary">
           <thead id="table-head">
             <tr>
+              <th class="row-index">#</th>
               <th><button class="sort" data-sort="gameName" type="button" title="canonical itch.io game title from jam_games[].game.title">game name <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th><button class="sort" data-sort="contributors" type="button" title="uses jam_games[].contributors when present otherwise falls back to the primary uploader">contributors <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th><button class="sort active" data-sort="popularity" type="button" title="uses itch.io native jam_games order from entries.json where 1 is most popular">popularity <span class="sort-indicator" aria-hidden="true"></span></button></th>
@@ -519,7 +528,7 @@
           </thead>
           <tbody id="table-body">
             <tr>
-              <td class="empty" colspan="7">load a jam to populate the table</td>
+              <td class="empty" colspan="8">load a jam to populate the table</td>
             </tr>
           </tbody>
         </table>
