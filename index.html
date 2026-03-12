@@ -165,6 +165,17 @@
       background: var(--panel);
     }
 
+    .notice {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      color: var(--summary-fg);
+      font-size: 13px;
+    }
+    
+    .notice p {
+      margin: 0;
+    }
+
     label {
       display: block;
       margin-bottom: 6px;
@@ -484,7 +495,11 @@
         </div>
       </div>
     </header>
-
+    <section class="panel notice" aria-label="About this page">
+      <p>
+        scrapes public data from itch.io to provide jam stats for a game jam
+      </p>
+    </section>
     <section class="panel">
       <label for="jam-input">jam url / slug / id</label>
       <div class="controls">
