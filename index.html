@@ -136,20 +136,28 @@
       border: 1px solid var(--line);
       background: var(--header);
     }
-
+    
     .brand {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 12px;
     }
-
+    
     .page-logo {
-      width: 42px;
-      height: 42px;
+      width: 52px;
+      height: 52px;
       background: transparent;
       object-fit: cover;
+      flex: 0 0 auto;
     }
-
+    
+    .brand-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 52px;
+    }
+    
     .brand-copy h1 {
       margin: 0;
       font-family: inherit;
@@ -164,16 +172,12 @@
       border: 1px solid var(--line);
       background: var(--panel);
     }
-
-    .notice {
-      margin-bottom: 12px;
-      padding: 10px 12px;
-      color: var(--summary-fg);
-      font-size: 13px;
-    }
     
-    .notice p {
-      margin: 0;
+    .brand-subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.3;
     }
 
     label {
@@ -492,14 +496,12 @@
         <img class="page-logo" src="./logo.png" alt="jam-stats logo">
         <div class="brand-copy">
           <h1><a href="https://itch.io" target="_blank" rel="noreferrer">Itch.io</a> Jam Stats</h1>
+          <p class="brand-subtitle">
+            scrapes public data from itch.io to provide jam stats for a game jam
+          </p>
         </div>
       </div>
     </header>
-    <section class="panel notice" aria-label="About this page">
-      <p>
-        scrapes public data from itch.io to provide jam stats for a game jam
-      </p>
-    </section>
     <section class="panel">
       <label for="jam-input">jam url / slug / id</label>
       <div class="controls">
